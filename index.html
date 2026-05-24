@@ -1,22 +1,543 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anton & Valtteri Co. Candidate Report Generator</title>
 
-  <div class="header">
-    <h1>Candidate Report Generator</h1>
-    <p>Anton & Valtteri Co.</p>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #111;
+    }
+
+    header {
+      background: #000;
+      color: #fff;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      margin-top: 8px;
+      color: #ddd;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+      border-left: 5px solid #000;
+    }
+
+    h2 {
+      margin-top: 0;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+    }
+
+    label {
+      font-weight: 700;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      font-size: 15px;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    button {
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 14px 22px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-top: 8px;
+    }
+
+    button:hover {
+      background: #333;
+    }
+
+    .warning {
+      background: #fff4d6;
+      border-left: 5px solid #d8a100;
+      padding: 14px;
+      border-radius: 6px;
+      margin-bottom: 18px;
+      font-size: 14px;
+    }
+
+    .report {
+      background: #fff;
+      padding: 48px;
+      margin-top: 24px;
+      border-radius: 12px;
+      line-height: 1.55;
+    }
+
+    .cover {
+      min-height: 800px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 40px;
+      padding-bottom: 40px;
+    }
+
+    .cover-logo {
+      font-size: 32px;
+      font-weight: 900;
+      color: #000;
+    }
+
+    .cover-title {
+      font-size: 42px;
+      font-weight: 900;
+      margin-top: 160px;
+    }
+
+    .confidential {
+      font-size: 13px;
+      color: #555;
+      max-width: 750px;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      color: #555;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 900;
+      margin-top: 28px;
+      margin-bottom: 14px;
+    }
+
+    .row {
+      margin-bottom: 8px;
+    }
+
+    .label {
+      font-weight: 800;
+    }
+
+    .job {
+      margin-bottom: 26px;
+    }
+
+    .job-title {
+      font-weight: 900;
+      font-size: 17px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #666;
+    }
+
+    @media print {
+      body { background: #fff; }
+      header, .container > .card, button { display: none; }
+      .container { max-width: none; margin: 0; padding: 0; }
+      .report { box-shadow: none; border-radius: 0; padding: 40px; }
+      .cover { page-break-after: always; }
+      .page-break { page-break-before: always; }
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">Anton & Valtteri Co.</div>
+  <div class="subtitle">Candidate Report Generator</div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>1. Syötä tiedot</h2>
+
+    <div class="warning">
+      Huom: Tämä selainversio käyttää OpenAI API -avainta suoraan selaimessa.
+      Tämä sopii testikäyttöön, mutta tuotantokäytössä API-kutsu kannattaa siirtää palvelimelle.
+    </div>
+
+    <label>OpenAI API key</label>
+    <input id="apiKey" type="password" placeholder="sk-..." />
+
+    <label>Lataa CV PDF -tiedostona</label>
+    <input id="cvFile" type="file" accept="application/pdf" />
+
+    <label>Irtisanomisaika</label>
+    <input id="noticePeriod" placeholder="Esim. 3 kuukautta" />
+
+    <label>Palkkatiedot</label>
+    <textarea id="salaryInfo" placeholder="Esim. Kiinteä kuukausipalkka 7 400 €, bonus max 2 kk palkka"></textarea>
+
+    <label>Konsultin tiedot</label>
+    <textarea id="consultantInfo" placeholder="Esim. Anton Suomalainen, Partner, Anton & Valtteri Co."></textarea>
+
+    <label>Lisäohjeet tekoälylle</label>
+    <textarea id="extraInstructions" placeholder="Esim. painota IFRS-kokemusta, johtamista ja konserniraportointia"></textarea>
+
+    <button onclick="generateReport()">Luo Candidate Report</button>
+    <button onclick="window.print()">Tulosta / tallenna PDF</button>
+
+    <p class="small" id="status"></p>
   </div>
 
-  <div class="container">
+  <div id="reportOutput"></div>
 
-    <h2>Candidate Information</h2>
+</div>
 
-    <input type="text" placeholder="Candidate Name">
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-    <input type="text" placeholder="Current Position">
+async function extractPdfText(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let text = "";
 
-    <textarea rows="6" placeholder="Candidate Summary"></textarea>
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(item => item.str).join(" ");
+    text += pageText + "\n\n";
+  }
 
-    <button>Luo Candidate Report</button>
+  return text;
+}
 
-  </div>
+function todayFi() {
+  const d = new Date();
+  return d.toLocaleDateString("fi-FI");
+}
+
+async function generateReport() {
+  const apiKey = document.getElementById("apiKey").value.trim();
+  const file = document.getElementById("cvFile").files[0];
+  const noticePeriod = document.getElementById("noticePeriod").value.trim();
+  const salaryInfo = document.getElementById("salaryInfo").value.trim();
+  const consultantInfo = document.getElementById("consultantInfo").value.trim();
+  const extraInstructions = document.getElementById("extraInstructions").value.trim();
+  const status = document.getElementById("status");
+
+  if (!apiKey) {
+    alert("Syötä OpenAI API key.");
+    return;
+  }
+
+  if (!file) {
+    alert("Lataa CV PDF -tiedostona.");
+    return;
+  }
+
+  status.textContent = "Luetaan CV:tä...";
+  const cvText = await extractPdfText(file);
+
+  status.textContent = "Luodaan raporttia tekoälyllä...";
+
+  const prompt = `
+Luo suomenkielinen Candidate Report seuraavan rakenteen mukaan.
+
+Tyyli:
+- Ammattimainen executive search -raportti
+- Selkeä, tiivis ja faktapohjainen
+- Ei keksittyjä henkilötietoja
+- Jos tieto puuttuu, käytä arvoa "Ei tiedossa"
+- Älä lisää arkaluontoisia tietoja, joita CV:ssä ei ole
+- Käytä yrityksenä "Anton & Valtteri Co."
+- Väri- ja brändityyli on mustavalkoinen
+
+Raportin rakenne:
+1. Henkilötiedot
+- Syntymäaika
+- Kansallisuus
+- Asuinpaikka
+
+2. Yhteystiedot
+- Puhelinnumero
+- Sähköposti
+
+3. Nykyinen työsuhde
+- Nimike
+- Työnantaja
+
+4. Nykyinen kompensaatio ja käytettävyys
+- Irtisanomisaika
+- Kompensaatio
+- Bonus
+
+5. Koulutus
+- Ajanjakso
+- Oppilaitos
+- Tutkinto
+- Pääaine
+- Sivuaine
+
+6. Työura
+Jokaisesta roolista:
+- Ajanjakso
+- Työnantaja
+- Tehtävänimike
+- Sijainti
+- Vastuualuekuvaus
+- Keskeiset vastuut
+- Keskeiset saavutukset
+
+7. Konsultin tiedot
+
+Käyttäjän antamat lisätiedot:
+Irtisanomisaika: ${noticePeriod}
+Palkkatiedot: ${salaryInfo}
+Konsultin tiedot: ${consultantInfo}
+Lisäohjeet: ${extraInstructions}
+
+CV-teksti:
+${cvText}
+
+Palauta vastaus JSON-muodossa tällä rakenteella:
+{
+  "candidateName": "",
+  "personalInfo": {
+    "birthDate": "",
+    "nationality": "",
+    "location": ""
+  },
+  "contactInfo": {
+    "phone": "",
+    "email": ""
+  },
+  "currentEmployment": {
+    "title": "",
+    "employer": ""
+  },
+  "compensation": {
+    "noticePeriod": "",
+    "salary": "",
+    "bonus": ""
+  },
+  "education": [
+    {
+      "period": "",
+      "school": "",
+      "degree": "",
+      "major": "",
+      "minor": ""
+    }
+  ],
+  "career": [
+    {
+      "period": "",
+      "employer": "",
+      "title": "",
+      "location": "",
+      "description": "",
+      "responsibilities": [],
+      "achievements": []
+    }
+  ],
+  "consultant": ""
+}
+`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "Olet kokenut executive search -konsultti, joka laatii suomenkielisiä Candidate Report -raportteja."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.2
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error(data);
+      alert("OpenAI API -virhe: " + (data.error?.message || "Tuntematon virhe"));
+      status.textContent = "Virhe raportin luonnissa.";
+      return;
+    }
+
+    let content = data.choices[0].message.content;
+    content = content.replace(/```json/g, "").replace(/```/g, "").trim();
+
+    const reportData = JSON.parse(content);
+    renderReport(reportData);
+
+    status.textContent = "Raportti luotu onnistuneesti.";
+  } catch (error) {
+    console.error(error);
+    alert("Virhe: " + error.message);
+    status.textContent = "Virhe raportin luonnissa.";
+  }
+}
+
+function safe(value) {
+  return value && value.trim ? value.trim() : value || "Ei tiedossa";
+}
+
+function renderList(items) {
+  if (!items || !items.length) return "<p>Ei tiedossa</p>";
+  return "<ul>" + items.map(item => `<li>${safe(item)}</li>`).join("") + "</ul>";
+}
+
+function renderReport(data) {
+  const output = document.getElementById("reportOutput");
+
+  const educationHtml = (data.education || []).map(e => `
+    <div class="job">
+      <div class="job-title">${safe(e.period)} ${safe(e.school)}</div>
+      <div>${safe(e.degree)}</div>
+      <div>Pääaine: ${safe(e.major)}</div>
+      <div>Sivuaine: ${safe(e.minor)}</div>
+    </div>
+  `).join("");
+
+  const careerHtml = (data.career || []).map(job => `
+    <div class="job">
+      <div class="job-title">${safe(job.period)} ${safe(job.employer)}</div>
+      <div><strong>${safe(job.title)}</strong></div>
+      <div>${safe(job.location)}</div>
+      <p>${safe(job.description)}</p>
+
+      <div><strong>Keskeiset vastuut:</strong></div>
+      ${renderList(job.responsibilities)}
+
+      <div><strong>Keskeiset saavutukset:</strong></div>
+      ${renderList(job.achievements)}
+    </div>
+  `).join("");
+
+  output.innerHTML = `
+    <div class="report">
+
+      <div class="cover">
+        <div>
+          <div class="cover-logo">Anton & Valtteri Co.</div>
+        </div>
+
+        <div>
+          <div class="cover-title">Candidate Report</div>
+          <h1>${safe(data.candidateName)}</h1>
+        </div>
+
+        <div class="confidential">
+          The following evaluation has been prepared for the exclusive use of the client.
+          Its use should be limited to designated executives concerned with the selection
+          of the candidate, and under no circumstances should the evaluation contained
+          herein be transmitted to the candidate.
+        </div>
+      </div>
+
+      <div class="report-header">
+        <div>${todayFi()}</div>
+        <div>2</div>
+      </div>
+
+      <div class="section-title">Henkilötiedot</div>
+      <div class="row"><span class="label">Syntymäaika:</span> ${safe(data.personalInfo?.birthDate)}</div>
+      <div class="row"><span class="label">Kansallisuus:</span> ${safe(data.personalInfo?.nationality)}</div>
+      <div class="row"><span class="label">Asuinpaikka:</span> ${safe(data.personalInfo?.location)}</div>
+
+      <div class="section-title">Yhteystiedot</div>
+      <div class="row"><span class="label">Puhelinnumero:</span> ${safe(data.contactInfo?.phone)}</div>
+      <div class="row"><span class="label">Sähköposti:</span> ${safe(data.contactInfo?.email)}</div>
+
+      <div class="section-title">Nykyinen työsuhde</div>
+      <div class="row"><span class="label">Nimike:</span> ${safe(data.currentEmployment?.title)}</div>
+      <div class="row"><span class="label">Työnantaja:</span> ${safe(data.currentEmployment?.employer)}</div>
+
+      <div class="section-title">Nykyinen kompensaatio ja käytettävyys</div>
+      <div class="row"><span class="label">Irtisanomisaika:</span> ${safe(data.compensation?.noticePeriod)}</div>
+      <div class="row"><span class="label">Kompensaatio:</span> ${safe(data.compensation?.salary)}</div>
+      <div class="row"><span class="label">Bonus:</span> ${safe(data.compensation?.bonus)}</div>
+
+      <div class="section-title">Koulutus</div>
+      ${educationHtml || "<p>Ei tiedossa</p>"}
+
+      <div class="page-break"></div>
+
+      <div class="report-header">
+        <div>${todayFi()}</div>
+        <div>3</div>
+      </div>
+
+      <div class="section-title">Työura</div>
+      ${careerHtml || "<p>Ei tiedossa</p>"}
+
+      <div class="page-break"></div>
+
+      <div class="report-header">
+        <div>${todayFi()}</div>
+        <div>Viimeinen sivu</div>
+      </div>
+
+      <div style="margin-top: 300px;">
+        <div class="cover-logo">Anton & Valtteri Co.</div>
+        <p>${safe(data.consultant)}</p>
+        <p><strong>Your Leadership Partner</strong></p>
+      </div>
+
+    </div>
+  `;
+}
+</script>
 
 </body>
 </html>
